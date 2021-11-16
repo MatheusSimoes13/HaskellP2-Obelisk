@@ -57,6 +57,7 @@ currPag p = do
 
 mainPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => m ()
 mainPag = do
+  elAttr "div" ("class" =: "principal") $ do
     pagina <- el "div" menuLi
     dyn_ $ currPag <$> pagina
 
