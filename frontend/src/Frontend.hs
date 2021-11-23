@@ -1,6 +1,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeApplications, ScopedTypeVariables #-}
 
 module Frontend where
 
@@ -20,7 +20,26 @@ import Data.Maybe
 import Common.Api
 import Common.Route
 
-data Pagina = Pagina0 | Pagina1 | Pagina2 | Pagina3
+data Pagina = Pagina0 | Pagina1 | Pagina2 | Pagina3 | Pagina4
+
+getPath :: T.Text
+getPath = renderBackendRoute checFullREnc $ BackendRoute_Cliente :/ ()
+
+nomeRequest :: T.Text -> XhrRequest T.Text
+nomeRequest s = postJson getPath (Cliente s)
+
+req :: ( DomBuilder t m
+       , Prerender js t m
+       ) => m ()
+req = do
+    inputEl <- inputElement def
+    (submitBtn,_) <- el' "button" (text "Inserir")
+    let click = domEvent Click submitBtn
+    let nm = tag (current $ _inputElement_value inputEl) click 
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
+    return ()
 
 countClick :: DomBuilder t m => m (Event t Int)
 countClick = do
@@ -44,18 +63,20 @@ menuLi = do
         li1 <- clickLi Pagina1 "Exemplo1: Reverso de Palavra"
         li2 <- clickLi Pagina2 "Exemplo2: Soma"
         li3 <- clickLi Pagina3 "Exemplo3: Cliques"
+        li4 <- clickLi Pagina4 "Exemplo: Inserção ao bd"
         return (leftmost [li1,li2,li3])
     holdDyn Pagina0 evs
 
-currPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => Pagina -> m ()
+currPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, Prerender js t m) => Pagina -> m ()
 currPag p = do
     case p of
          Pagina0 -> blank
          Pagina1 -> bttnEvt
          Pagina2 -> sumEvt
          Pagina3 -> pagClick
+         Pagina4 -> blank
 
-mainPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m) => m ()
+mainPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, Prerender js t m) => m ()
 mainPag = do
   elAttr "div" ("class" =: "principal") $ do
     pagina <- el "div" menuLi

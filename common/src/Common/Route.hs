@@ -16,14 +16,21 @@ import Prelude hiding (id, (.))
 import Control.Category
 -}
 
-import Data.Text (Text)
+import Data.Text (Text,unpack)
 import Data.Functor.Identity
-
+import Data.Function
 import Obelisk.Route
 import Obelisk.Route.TH
 
+checFullREnc :: Encoder Identity Identity(R (FullRoute BackendRoute FrontendRoute)) PageName
+checFullREnc = checkEncoder fullRouteEncoder &
+     \case
+          Left err -> error $ unpack err
+          Right encoder -> encoder
+
 data BackendRoute :: * -> * where
   -- | Used to handle unparseable routes.
+  BackendRoute_Cliente :: BackendRoute ()
   BackendRoute_Missing :: BackendRoute ()
   -- You can define any routes that will be handled specially by the backend here.
   -- i.e. These do not serve the frontend, but do something different, such as serving static files.
@@ -37,7 +44,9 @@ fullRouteEncoder
 fullRouteEncoder = mkFullRouteEncoder
   (FullRoute_Backend BackendRoute_Missing :/ ())
   (\case
-      BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty)
+      BackendRoute_Missing -> PathSegment "missing" $ unitEncoder mempty
+      BackendRoute_Cliente -> PathSegment "cliente" $ unitEncoder mempty
+      )
   (\case
       FrontendRoute_Main -> PathEnd $ unitEncoder mempty)
 
