@@ -19,14 +19,36 @@ import Reflex.Dom.Core
 import Data.Maybe
 import Common.Api
 import Common.Route
+import Data.Aeson
 
-data Pagina = Pagina0 | Pagina1 | Pagina2 | Pagina3 | Pagina4
+data Pagina = Pagina0 | Pagina1 | Pagina2 | Pagina3 | Pagina4 | Pagina5 | Pagina6
 
-getPath :: T.Text
-getPath = renderBackendRoute checFullREnc $ BackendRoute_Cliente :/ ()
+getPath :: R BackendRoute -> T.Text
+getPath r = renderBackendRoute checFullREnc r
 
-nomeRequest :: T.Text -> XhrRequest T.Text
-nomeRequest s = postJson getPath (Cliente s)
+getListReq :: XhrRequest ()
+getListReq = XhrRequest "GET" (getPath (BackendRoute_Listar :/ ())) def
+
+sendRequest :: ToJSON a => R BackendRoute -> a -> XhrRequest T.Text
+sendRequest r dados = postJson (getPath r) dados
+
+reqProd :: ( DomBuilder t m
+           , Prerender js t m
+           ) => m ()
+reqProd = do
+    nome <- inputElement def
+    vl <- numberInput
+    qt <- numberInput
+    let prod =
+        fmap (\((n,v),q) -> Produto 0 n v q)
+             (zipDyn (zipDyn (_inputElement_value nome) vl) qt)
+    (submitBtn,_) <- el' "button" (text "Inserir")
+    let click = domEvent Click submitBtn
+    let prodEvt = tag (current prod) click
+    _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_Produto :/ ()) <$> prodEvt))
+    return ()
 
 req :: ( DomBuilder t m
        , Prerender js t m
@@ -38,8 +60,41 @@ req = do
     let nm = tag (current $ _inputElement_value inputEl) click 
     _ :: Dynamic t (Event t (Maybe T.Text)) <- prerender
         (pure never)
-        (fmap decodeXhrResponse <$> performRequestAsync (nomeRequest <$> nm))
+        (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_Cliente :/ ()) <$> nm ))
     return ()
+
+tabProduto :: DomBuilder t m => Produto -> m ()
+tabProduto pr = do
+    el "tr" $ do
+        el "td" (text $ T.pack $ show $ produtoId pr)
+        el "td" (text $ produtoNome pr)
+        el "td" (text $ T.pack $ show $ produtoValor pr)
+        el "td" (text $ T.pack $ show $ produtoQt pr)
+
+reqLista :: ( DomBuilder t m
+            , Prerender js t m
+            , MonadHold  t m
+            , MonadFix m
+            , PostBuild t m) => m ()
+reqLista = do
+    (btn,_) <- el "button" (text "Listar")
+    let click = domEvent Click btn
+    prods :: Dynamic t (Event t (Maybe [Produto])) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (const getListReq <$> click))
+    dynP <- foldDyn (\ps d -> case ps of
+                            Nothing -> []
+                            Just p -> d++p [] (switchDyn prods))
+    el "table" $ do
+        el "thead" $ do
+            el "tr" $ do
+                el "th" (text "Id")
+                el "th" (text "Nome")
+                el "th" (text "Valor")
+                el "th" (text "Qt")
+
+        el "tbody" $ do
+            dyn_ (fmap sequence (ffor dynP (fmap tabProduto)))
 
 countClick :: DomBuilder t m => m (Event t Int)
 countClick = do
@@ -63,8 +118,10 @@ menuLi = do
         li1 <- clickLi Pagina1 "Exemplo1: Reverso de Palavra"
         li2 <- clickLi Pagina2 "Exemplo2: Soma"
         li3 <- clickLi Pagina3 "Exemplo3: Cliques"
-        li4 <- clickLi Pagina4 "Exemplo: Inserção ao bd"
-        return (leftmost [li1,li2,li3])
+        li4 <- clickLi Pagina4 "Exemplo4: Inserção ao bd"
+        li5 <- clickLi Pagina5 "Exemplo5: Inserção Produto"
+        li6 <- clickLi Pagina6 "Exemplo6: Listagem produto"
+        return (leftmost [li1, li2, li3, li4, li5, li6])
     holdDyn Pagina0 evs
 
 currPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, Prerender js t m) => Pagina -> m ()
@@ -74,7 +131,9 @@ currPag p = do
          Pagina1 -> bttnEvt
          Pagina2 -> sumEvt
          Pagina3 -> pagClick
-         Pagina4 -> blank
+         Pagina4 -> req
+         Pagina5 -> reqProd
+         Pagina6 -> reqLista
 
 mainPag :: (DomBuilder t m, PostBuild t m, MonadHold t m, MonadFix m, Prerender js t m) => m ()
 mainPag = do
@@ -127,7 +186,7 @@ caixaSoma = do
     n2 <- numberInput
     dynText (fmap (T.pack . show) (zipDynWith (+) n1 n2))
 
-numberInput :: DomBuilder t m => m (Dynamic t Double)
+numberInput :: (DomBuilder t m, Num a, Read a) => m (Dynamic t a)
 numberInput = do
       n <- inputElement $ def
         & inputElementConfig_initialValue .~ "0"
