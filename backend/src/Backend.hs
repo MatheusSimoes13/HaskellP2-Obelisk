@@ -38,6 +38,17 @@ backend = Backend
                         query_ dbcon "SELECT * FROM produtoo"
                     modifyResponse $ setResponseStatus 200 "OK"
                     writeLazyText (encodeToLazyText res)
+                BackendRoute_Editar :/ pid -> method POST $ do
+                    prod <- A.decode <$> readRequestBody 2000
+                    case prod of
+                         Just produto -> do
+                             liftIO $ do
+                                execute_ dbcon migrateProd
+                                execute dbcon "UPDATE produtoo SET nome = ?, valor = ?, qt = ? WHERE id = ?"
+                                         (produtoNome produto,produtoValor produto,produtoQt produto,pid)
+                             modifyResponse $ setResponseStatus 200 "OK"
+                         Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
+
                 BackendRoute_Buscar :/ pid -> method GET $ do
                     res :: [Produto] <- liftIO $ do
                         execute_ dbcon migrateProd
@@ -50,7 +61,7 @@ backend = Backend
                 BackendRoute_Produto :/ () -> method POST $ do
                     prod <- A.decode <$> readRequestBody 2000
                     case prod of
-                         Just produto ->
+                         Just produto -> do
                              liftIO $ do
                                  execute_ dbcon migrateProd
                                  execute dbcon "INSERT INTO produtoo (nome,valor,qt) VALUES (?,?,?)"
