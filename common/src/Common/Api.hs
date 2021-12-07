@@ -21,3 +21,4 @@ data Produto = Produto {
     produtoValor :: Double,
     produtoQt :: Int
 } deriving (Generic, ToJSON, FromJSON, ToRow, FromRow, Eq, Show)
+
