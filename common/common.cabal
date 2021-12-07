@@ -9,6 +9,7 @@ library
                , obelisk-route
                , mtl
                , text
+               , aeson
   exposed-modules:
     Common.Api
     Common.Route

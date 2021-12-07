@@ -23,3 +23,12 @@ h1{
 a{
   text-decoration: none;
 }
+
+table,tr,th,thead,tbody{
+  text-align: center;
+}
+
+input{
+  margin-right:10px;
+}
+
