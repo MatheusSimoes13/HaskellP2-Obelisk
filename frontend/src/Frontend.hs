@@ -64,7 +64,7 @@ req = do
         (fmap decodeXhrResponse <$> performRequestAsync (sendRequest (BackendRoute_Cliente :/ ()) <$> nm ))
     return ()
 
-data Acao = Perfil Int | Editar Int
+data Acao = Perfil Int | Editar Int | Excluir Int
 
 tabProduto :: (PostBuild t m, DomBuilder t m) => Dynamic t Produto -> m (Event t Acao)
 tabProduto pr = do
@@ -75,8 +75,21 @@ tabProduto pr = do
         el "td" (dynText $ fmap (T.pack . show . produtoQt) pr)
         evt1 <- fmap (fmap (const Perfil)) (button "perfil")
         evt2 <- fmap (fmap (const Editar)) (button "editar")
-        return (attachPromptlyDynWith (flip ($)) (fmap produtoId pr) (leftmost [evt1,evt2]))
+        evt3 <- fmap (fmap (const Excluir)) (button "excluir")
+        return (attachPromptlyDynWith (flip ($)) (fmap produtoId pr) (leftmost [evt1,evt2,evt3]))
 
+excluir :: (DomBuilder t m
+           , Prerender js t m
+           , MonadHold t m
+           , MonadFix m
+           , PostBuild t m) => Int -> Workflow t m T.Text
+excluir pid = Workflow $ do
+    btn <- button "voltar"
+    prod :: Dynamic t (Event t (Maybe Produto)) <- prerender
+        (pure never)
+        (fmap decodeXhrResponse <$> performRequestAsync (const (getProdReq pid) <$> btn))
+
+    return ("Concluído, ID: " <> (T.pack $ show pid),reqTabela <$ btn)  
 editarPerfil :: ( DomBuilder t m
              , Prerender js t m
              , MonadHold t m
@@ -154,6 +167,7 @@ reqTabela = Workflow $ do
     where
         escolherPag (Perfil pid) = pagPerfil pid
         escolherPag (Editar pid) = editarPerfil pid
+        escolherPag (Excluir pid) = excluir pid
 
 reqLista :: ( DomBuilder t m
             , Prerender js t m

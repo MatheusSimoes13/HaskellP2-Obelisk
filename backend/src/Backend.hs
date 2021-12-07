@@ -49,6 +49,16 @@ backend = Backend
                              modifyResponse $ setResponseStatus 200 "OK"
                          Nothing -> modifyResponse $ setResponseStatus 500 "ERRO"
 
+                BackendRoute_Excluir :/ pid -> method POST $ do
+                    res :: [Produto] <- liftIO $ do
+                            execute_ dbcon migrateProd
+                            query dbcon "DELETE FROM produtoo WHERE id = ?" (Only (pid :: Int))
+                    if res /= [] then do
+                            modifyResponse $ setResponseStatus 200 "OK"   
+                            writeLazyText (encodeToLazyText (Prelude.head res))
+                    else 
+                            modifyResponse $ setResponseStatus 404 "NOT FOUND"
+
                 BackendRoute_Buscar :/ pid -> method GET $ do
                     res :: [Produto] <- liftIO $ do
                         execute_ dbcon migrateProd

@@ -32,3 +32,6 @@ input{
   margin-right:10px;
 }
 
+td{
+  border: 2px solid black;
+}
