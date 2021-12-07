@@ -29,6 +29,9 @@ getPath r = renderBackendRoute checFullREnc r
 getProdReq :: Int -> XhrRequest ()
 getProdReq pid = xhrRequest "GET" (getPath (BackendRoute_Buscar :/ pid)) def
 
+getExcluirProd :: Int -> XhrRequest()
+getExcluirProd pid = xhrRequest "POST" (getPath (BackendRoute_Excluir :/ pid)) def
+
 getListReq :: XhrRequest ()
 getListReq = xhrRequest "GET" (getPath (BackendRoute_Listar :/ ())) def
 
@@ -87,7 +90,7 @@ excluir pid = Workflow $ do
     btn <- button "voltar"
     prod :: Dynamic t (Event t (Maybe Produto)) <- prerender
         (pure never)
-        (fmap decodeXhrResponse <$> performRequestAsync (const (getProdReq pid) <$> btn))
+        (fmap decodeXhrResponse <$> performRequestAsync (const (getExcluirProd pid) <$> btn))
 
     return ("Concluído, ID: " <> (T.pack $ show pid),reqTabela <$ btn)  
 editarPerfil :: ( DomBuilder t m
